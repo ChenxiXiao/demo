@@ -244,4 +244,13 @@ public class LibraryUtils {
         logger.info("received request to list available books");
         return persistence.listAvailableBooks().orElse(new ArrayList<>());
     }
+
+    /**
+     * Generally, this is for returning a book that had been borrowed by a borrower
+     * @param book the book that was borrowed
+     * @param returnDate the date it was returned
+     */
+    public LibraryActionResults returnBook(Book book, Date returnDate) {
+        return LibraryActionResults.RETURNED_BOOK_SUCCESSFULLY;
+    }
 }

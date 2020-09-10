@@ -35,6 +35,20 @@ public enum LibraryActionResults {
      * if a method needs a borrower and none is provided
      */
     NO_BORROWER_PROVIDED,
+
+    /**
+     * A librarian successfully returned a book
+     */
+    RETURNED_BOOK_SUCCESSFULLY,
+
+    /**
+     * In this case, someone tried to return a book that was
+     * already available for lending - that is, it wasn't
+     * really even checked out, so obviously we cannot return it
+     * in that case
+     */
+    ERROR_BOOK_WAS_NOT_CHECKED_OUT_WHEN_RETURNED,
+
     /**
      * may be used when initializing a variable of this type
      */

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
 public class LibraryUtilsTests {
@@ -24,8 +25,11 @@ public class LibraryUtilsTests {
     private LibraryUtils libraryUtils = Mockito.spy(new LibraryUtils(mockPersistenceLayer));
 
     private final Book DEFAULT_BOOK = BookTests.createTestBook();
+    private final Book UNBORROWED_BOOK = BookTests.createTestBook();
+    private final Book LOANED_BOOK = BookTests.createTestBook();
     private final Borrower DEFAULT_BORROWER = BorrowerTests.createTestBorrower();
     private final static Date BORROW_DATE = Date.valueOf(LocalDate.of(2018, Month.JANUARY, 1));
+    private final static Date RETURN_DATE = Date.valueOf(LocalDate.of(2018, Month.JANUARY, 2));
 
 
     @Before
@@ -47,7 +51,7 @@ public class LibraryUtilsTests {
         final LibraryActionResults libraryActionResults =
                 libraryUtils.lendBook(DEFAULT_BOOK, DEFAULT_BORROWER, BORROW_DATE);
 
-        Assert.assertEquals(LibraryActionResults.SUCCESS, libraryActionResults);
+        assertEquals(LibraryActionResults.SUCCESS, libraryActionResults);
     }
 
     /**
@@ -62,7 +66,7 @@ public class LibraryUtilsTests {
         final LibraryActionResults libraryActionResults =
                 libraryUtils.lendBook(DEFAULT_BOOK.title, DEFAULT_BORROWER.name, BORROW_DATE);
 
-        Assert.assertEquals(LibraryActionResults.SUCCESS, libraryActionResults);
+        assertEquals(LibraryActionResults.SUCCESS, libraryActionResults);
     }
 
     @Test
@@ -72,7 +76,7 @@ public class LibraryUtilsTests {
         final LibraryActionResults libraryActionResults
                 = libraryUtils.registerBorrower(DEFAULT_BORROWER.name);
 
-        Assert.assertEquals(LibraryActionResults.SUCCESS, libraryActionResults);
+        assertEquals(LibraryActionResults.SUCCESS, libraryActionResults);
     }
 
     @Test
@@ -81,7 +85,7 @@ public class LibraryUtilsTests {
 
         final LibraryActionResults libraryActionResults = libraryUtils.registerBook(DEFAULT_BOOK.title);
 
-        Assert.assertEquals(LibraryActionResults.SUCCESS, libraryActionResults);
+        assertEquals(LibraryActionResults.SUCCESS, libraryActionResults);
     }
 
     @Rule
@@ -164,7 +168,7 @@ public class LibraryUtilsTests {
         final LibraryActionResults result = libraryUtils.deleteBook(DEFAULT_BOOK);
 
         Mockito.verify(mockPersistenceLayer, times(1)).deleteBook(DEFAULT_BOOK.id);
-        Assert.assertEquals(LibraryActionResults.SUCCESS, result);
+        assertEquals(LibraryActionResults.SUCCESS, result);
     }
 
     /**
@@ -177,7 +181,7 @@ public class LibraryUtilsTests {
         final LibraryActionResults result = libraryUtils.deleteBook(DEFAULT_BOOK);
 
         Mockito.verify(mockPersistenceLayer, times(0)).deleteBook(DEFAULT_BOOK.id);
-        Assert.assertEquals(LibraryActionResults.NON_REGISTERED_BOOK_CANNOT_BE_DELETED, result);
+        assertEquals(LibraryActionResults.NON_REGISTERED_BOOK_CANNOT_BE_DELETED, result);
     }
 
     /**
@@ -190,7 +194,7 @@ public class LibraryUtilsTests {
         final LibraryActionResults result = libraryUtils.deleteBorrower(DEFAULT_BORROWER);
 
         Mockito.verify(mockPersistenceLayer, times(1)).deleteBorrower(DEFAULT_BORROWER.id);
-        Assert.assertEquals(LibraryActionResults.SUCCESS, result);
+        assertEquals(LibraryActionResults.SUCCESS, result);
     }
 
     /**
@@ -203,7 +207,7 @@ public class LibraryUtilsTests {
         final LibraryActionResults result = libraryUtils.deleteBorrower(DEFAULT_BORROWER);
 
         Mockito.verify(mockPersistenceLayer, times(0)).deleteBorrower(DEFAULT_BORROWER.id);
-        Assert.assertEquals(LibraryActionResults.NON_REGISTERED_BORROWER_CANNOT_BE_DELETED, result);
+        assertEquals(LibraryActionResults.NON_REGISTERED_BORROWER_CANNOT_BE_DELETED, result);
     }
 
     /**
@@ -218,7 +222,7 @@ public class LibraryUtilsTests {
 
         List<Book> bookList = libraryUtils.listAllBooks();
 
-        Assert.assertEquals(books, bookList);
+        assertEquals(books, bookList);
     }
 
     /**
@@ -231,7 +235,7 @@ public class LibraryUtilsTests {
         final List<Borrower> borrowers = generateListOfBorrowers(new String[]{"foo", "bar"});
         Mockito.when(mockPersistenceLayer.listAllBorrowers()).thenReturn(Optional.of(borrowers));
         List<Borrower> borrowerList = libraryUtils.listAllBorrowers();
-        Assert.assertEquals(borrowers, borrowerList);
+        assertEquals(borrowers, borrowerList);
     }
 
     @Test
@@ -239,6 +243,45 @@ public class LibraryUtilsTests {
         libraryUtils.listAvailableBooks();
         Mockito.verify(mockPersistenceLayer).listAvailableBooks();
     }
+
+    /**
+     * Happy path - the book was borrowed and returned
+     */
+    @Test
+    public void testShouldReturnBookThatWasBorrowed() {
+        mockThatBookWasLoanedOut();
+        LibraryActionResults result = libraryUtils.returnBook(LOANED_BOOK, RETURN_DATE);
+        assertEquals("Successfully returning a book gets a suitable message",
+                LibraryActionResults.RETURNED_BOOK_SUCCESSFULLY, result);
+    }
+
+    /**
+     * If someone tries to return a book that wasn't actually loaned,
+     * the system should complain clearly
+     */
+    @Test
+    public void testShouldIndicateErrorMessageIfBookNotCheckedOut()  {
+        mockThatBookIsUnborrowed();
+        LibraryActionResults result = libraryUtils.returnBook(UNBORROWED_BOOK, RETURN_DATE);
+        assertEquals("Successfully returning a book gets a suitable message",
+                LibraryActionResults.ERROR_BOOK_WAS_NOT_CHECKED_OUT_WHEN_RETURNED, result);
+    }
+
+    @Test
+    public void testShouldRecordDateBookWasReturned() {
+
+    }
+
+    /**
+     * What happens when a borrower tries returning a book that isn't even
+     * in the library's system - for example, a book the borrower actually
+     * owns, or from a separate library
+     */
+    @Test
+    public void testShouldComplainIfBookWasntRegisteredAtLibrary() {
+
+    }
+
 
     /**
      * A helper function to generate a list of books, given a list of titles.
